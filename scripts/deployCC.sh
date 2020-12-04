@@ -2,19 +2,21 @@ source scriptUtils.sh
 
 CHANNEL_NAME=${1:-"mychannel"}
 CC_NAME=${2:-"basic"}
-CC_SRC_LANGUAGE=${3:-"go"}
-CC_VERSION=${4:-"1.0"}
-CC_SEQUENCE=${5:-"1"}
-CC_INIT_FCN=${6:-"NA"}
-CC_END_POLICY=${7:-"NA"}
-CC_COLL_CONFIG=${8:-"NA"}
-DELAY=${9:-"3"}
-MAX_RETRY=${10:-"5"}
-VERBOSE=${11:-"false"}
+CC_SRC_PATH=${3:-"NA"}
+CC_SRC_LANGUAGE=${4:-"go"}
+CC_VERSION=${5:-"1.0"}
+CC_SEQUENCE=${6:-"1"}
+CC_INIT_FCN=${7:-"NA"}
+CC_END_POLICY=${8:-"NA"}
+CC_COLL_CONFIG=${9:-"NA"}
+DELAY=${10:-"3"}
+MAX_RETRY=${11:-"5"}
+VERBOSE=${12:-"false"}
 
 println "executing with the following"
 println "- CHANNEL_NAME: ${C_GREEN}${CHANNEL_NAME}${C_RESET}"
 println "- CC_NAME: ${C_GREEN}${CC_NAME}${C_RESET}"
+println "- CC_SRC_PATH: ${C_GREEN}${CC_SRC_PATH}${C_RESET}"
 println "- CC_SRC_LANGUAGE: ${C_GREEN}${CC_SRC_LANGUAGE}${C_RESET}"
 println "- CC_VERSION: ${C_GREEN}${CC_VERSION}${C_RESET}"
 println "- CC_SEQUENCE: ${C_GREEN}${CC_SEQUENCE}${C_RESET}"
@@ -28,8 +30,6 @@ println "- VERBOSE: ${C_GREEN}${VERBOSE}${C_RESET}"
 CC_SRC_LANGUAGE=$(echo "$CC_SRC_LANGUAGE" | tr [:upper:] [:lower:])
 
 FABRIC_CFG_PATH=$PWD/./config/
-
-CC_SRC_PATH="./chaincode-javascript/"
 
 if [ ! -d "$CC_SRC_PATH" ]; then
   fatalln "The smart contract language \"$CC_SRC_LANGUAGE\" is not yet available for the \"$CC_NAME\" sample smart contract"

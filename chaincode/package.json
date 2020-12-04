@@ -1,11 +1,11 @@
 {
-    "name": "asset-transfer-basic",
+    "name": "fabcar",
     "version": "1.0.0",
-    "description": "Asset-Transfer-Basic contract implemented in JavaScript",
+    "description": "FabCar contract implemented in JavaScript",
     "main": "index.js",
     "engines": {
         "node": ">=12",
-        "npm": ">=5"
+        "npm": ">=6.9"
     },
     "scripts": {
         "lint": "eslint .",
@@ -23,7 +23,7 @@
     "devDependencies": {
         "chai": "^4.1.2",
         "eslint": "^4.19.1",
-        "mocha": "^8.0.1",
+        "mocha": "^5.2.0",
         "nyc": "^14.1.1",
         "sinon": "^6.0.0",
         "sinon-chai": "^3.2.0"
@@ -31,9 +31,7 @@
     "nyc": {
         "exclude": [
             "coverage/**",
-            "test/**",
-            "index.js",
-            ".eslintrc.js"
+            "test/**"
         ],
         "reporter": [
             "text-summary",
