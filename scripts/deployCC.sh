@@ -1,3 +1,5 @@
+#!/bin/bash
+
 source scriptUtils.sh
 
 CHANNEL_NAME=${1:-"mychannel"}
@@ -29,17 +31,96 @@ println "- VERBOSE: ${C_GREEN}${VERBOSE}${C_RESET}"
 
 CC_SRC_LANGUAGE=$(echo "$CC_SRC_LANGUAGE" | tr [:upper:] [:lower:])
 
-FABRIC_CFG_PATH=$PWD/./config/
+FABRIC_CFG_PATH=$PWD/config/
 
-if [ ! -d "$CC_SRC_PATH" ]; then
-  fatalln "The smart contract language \"$CC_SRC_LANGUAGE\" is not yet available for the \"$CC_NAME\" sample smart contract"
+# User has not provided a path, therefore the CC_NAME must
+# be the short name of a known chaincode sample
+if [ "$CC_SRC_PATH" = "NA" ]; then
+  infoln "Determining the path to the chaincode"
+  # first see which chaincode we have. This will be based on the
+  # short name of the known chaincode sample
+  if [ "$CC_NAME" = "basic" ]; then
+    println $'\e[0;32m'asset-transfer-basic$'\e[0m' chaincode
+    CC_SRC_PATH="../asset-transfer-basic"
+  elif [ "$CC_NAME" = "events" ]; then
+    println $'\e[0;32m'asset-transfer-events$'\e[0m' chaincode
+    CC_SRC_PATH="../asset-transfer-events"
+  elif [ "$CC_NAME" = "secured" ]; then
+    println $'\e[0;32m'asset-transfer-secured-agreeement$'\e[0m' chaincode
+    CC_SRC_PATH="../asset-transfer-secured-agreement"
+  elif [ "$CC_NAME" = "ledger" ]; then
+    println $'\e[0;32m'asset-transfer-ledger-agreeement$'\e[0m' chaincode
+    CC_SRC_PATH="../asset-transfer-ledger-queries"
+  elif [ "$CC_NAME" = "private" ]; then
+    println $'\e[0;32m'asset-transfer-private-data$'\e[0m' chaincode
+    CC_SRC_PATH="../asset-transfer-private-data"
+  elif [ "$CC_NAME" = "sbe" ]; then
+    println $'\e[0;32m'asset-transfer-sbe$'\e[0m' chaincode
+    CC_SRC_PATH="../asset-transfer-sbe"
+  else
+    fatalln "The chaincode name ${CC_NAME} is not supported by this script. Supported chaincode names are: basic, events, ledger, private, sbe, secured"
+  fi
+
+  # now see what language it is written in
+  if [ "$CC_SRC_LANGUAGE" = "go" ]; then
+    CC_SRC_PATH="$CC_SRC_PATH/chaincode-go/"
+  elif [ "$CC_SRC_LANGUAGE" = "java" ]; then
+    CC_SRC_PATH="$CC_SRC_PATH/chaincode-java/"
+  elif [ "$CC_SRC_LANGUAGE" = "javascript" ]; then
+    CC_SRC_PATH="$CC_SRC_PATH/chaincode-javascript/"
+  elif [ "$CC_SRC_LANGUAGE" = "typescript" ]; then
+    CC_SRC_PATH="$CC_SRC_PATH/chaincode-typescript/"
+  fi
+
+  # check that the language is available for the sample chaincode
+  if [ ! -d "$CC_SRC_PATH" ]; then
+    fatalln "The smart contract language \"$CC_SRC_LANGUAGE\" is not yet available for the \"$CC_NAME\" sample smart contract"
+  fi
+## Make sure that the path the chaincode exists if provided
+elif [ ! -d "$CC_SRC_PATH" ]; then
+  fatalln "Path to chaincode does not exist. Please provide different path"
+fi
+
+# do some language specific preparation to the chaincode before packaging
+if [ "$CC_SRC_LANGUAGE" = "go" ]; then
+  CC_RUNTIME_LANGUAGE=golang
+
+  infoln "Vendoring Go dependencies at $CC_SRC_PATH"
+  pushd $CC_SRC_PATH
+  GO111MODULE=on go mod vendor
+  popd
+  successln "Finished vendoring Go dependencies"
+
+elif [ "$CC_SRC_LANGUAGE" = "java" ]; then
+  CC_RUNTIME_LANGUAGE=java
+
+  infoln "Compiling Java code..."
+  pushd $CC_SRC_PATH
+  ./gradlew installDist
+  popd
+  successln "Finished compiling Java code"
+  CC_SRC_PATH=$CC_SRC_PATH/build/install/$CC_NAME
+
+elif [ "$CC_SRC_LANGUAGE" = "javascript" ]; then
+  CC_RUNTIME_LANGUAGE=node
+
+elif [ "$CC_SRC_LANGUAGE" = "typescript" ]; then
+  CC_RUNTIME_LANGUAGE=node
+
+  infoln "Compiling TypeScript code into JavaScript..."
+  pushd $CC_SRC_PATH
+  npm install
+  npm run build
+  popd
+  successln "Finished compiling TypeScript code into JavaScript"
+
+else
+  fatalln "The chaincode language ${CC_SRC_LANGUAGE} is not supported by this script. Supported chaincode languages are: go, java, javascript, and typescript"
   exit 1
 fi
 
-CC_RUNTIME_LANGUAGE=node
-
-
 INIT_REQUIRED="--init-required"
+# check if the init fcn should be called
 if [ "$CC_INIT_FCN" = "NA" ]; then
   INIT_REQUIRED=""
 fi
@@ -56,6 +137,7 @@ else
   CC_COLL_CONFIG="--collections-config $CC_COLL_CONFIG"
 fi
 
+# import utils
 . scripts/envVar.sh
 
 packageChaincode() {
@@ -68,6 +150,7 @@ packageChaincode() {
   successln "Chaincode is packaged"
 }
 
+# installChaincode PEER ORG
 installChaincode() {
   ORG=$1
   setGlobals $ORG
@@ -80,6 +163,7 @@ installChaincode() {
   successln "Chaincode is installed on peer0.org${ORG}"
 }
 
+# queryInstalled PEER ORG
 queryInstalled() {
   ORG=$1
   setGlobals $ORG
@@ -93,6 +177,7 @@ queryInstalled() {
   successln "Query installed successful on peer0.org${ORG} on channel"
 }
 
+# approveForMyOrg VERSION PEER ORG
 approveForMyOrg() {
   ORG=$1
   setGlobals $ORG
@@ -105,6 +190,7 @@ approveForMyOrg() {
   successln "Chaincode definition approved on peer0.org${ORG} on channel '$CHANNEL_NAME'"
 }
 
+# checkCommitReadiness VERSION PEER ORG
 checkCommitReadiness() {
   ORG=$1
   shift 1
@@ -112,6 +198,8 @@ checkCommitReadiness() {
   infoln "Checking the commit readiness of the chaincode definition on peer0.org${ORG} on channel '$CHANNEL_NAME'..."
   local rc=1
   local COUNTER=1
+  # continue to poll
+  # we either get a successful response, or reach MAX RETRY
   while [ $rc -ne 0 -a $COUNTER -lt $MAX_RETRY ]; do
     sleep $DELAY
     infoln "Attempting to check the commit readiness of the chaincode definition on peer0.org${ORG}, Retry after $DELAY seconds."
@@ -133,6 +221,7 @@ checkCommitReadiness() {
   fi
 }
 
+# commitChaincodeDefinition VERSION PEER ORG (PEER ORG)...
 commitChaincodeDefinition() {
   parsePeerConnectionParameters $@
   res=$?

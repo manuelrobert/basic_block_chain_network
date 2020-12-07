@@ -121,7 +121,7 @@ createChannelTx
 infoln "Generating anchor peer update transactions"
 createAncorPeerTx
 
-FABRIC_CFG_PATH=$PWD/./config/
+FABRIC_CFG_PATH=$PWD/config/
 
 ## Create channel
 infoln "Creating channel ${CHANNEL_NAME}"
