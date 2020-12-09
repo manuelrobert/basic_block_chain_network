@@ -1,3 +1,4 @@
+/api/node_modules
 /channel-artifacts/*.tx
 /channel-artifacts/*.block
 /ledgers
